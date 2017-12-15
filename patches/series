@@ -1,0 +1,20 @@
+# Backported from upstream
+no_dbus_dependency.diff
+
+# Debian specific.
+gnukfreebsd.diff
+no_htmlinfo_example.diff
+remove_privacy_breachs.diff
+link_fbclient.diff
+gnukfreebsd_cloexec.diff
+0001-High-dpi-drawTiledPixmap-raster-paint-engine.patch
+0002-StyleSheetStyle-Load-Nx-images.patch
+0003-StyleSheetStyle-fix-distorted-hiDPI-pngs.patch
+0004-QGraphicsDropShadowEffect-Fix-for-high-DPI-scaling.patch
+0005-QGraphicsBlurEffect-Fix-for-high-DPI-scaling.patch
+0006-QGraphicsColorizeEffect-Fix-for-high-DPI-scaling.patch
+0007-QGraphicsEffect-Fix-for-draw-error-size-in-decimal-scale-factor.patch
+0008-load-qss-svg-by-scale.patch
+0009-fix_qss_border_cap_style.patch
+fix_qrasterpaintengine_rect_for_hidpi.patch
+fix_qregion_scale_for_hidpi.patch

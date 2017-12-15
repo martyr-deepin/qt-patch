@@ -1,0 +1,29 @@
+From db2de20c59137eab15fac9592c001a4d234c82d4 Mon Sep 17 00:00:00 2001
+From: Friedemann Kleint <Friedemann.Kleint@qt.io>
+Date: Tue, 18 Apr 2017 14:21:33 +0200
+Subject: [PATCH] QGraphicsColorizeEffect: Fix for high DPI scaling
+
+Preserve the device pixel ratio.
+
+Task-number: QTBUG-60026
+Change-Id: I91a1bda6ce4defd064ec7edfcea40ff192a9068f
+Reviewed-by: Shawn Rutledge <shawn.rutledge@qt.io>
+---
+ src/widgets/effects/qpixmapfilter.cpp | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/widgets/effects/qpixmapfilter.cpp b/src/widgets/effects/qpixmapfilter.cpp
+index 1ff4f8e..2a069d7 100644
+--- a/src/widgets/effects/qpixmapfilter.cpp
++++ b/src/widgets/effects/qpixmapfilter.cpp
+@@ -1111,6 +1111,7 @@ void QPixmapColorizeFilter::draw(QPainter *painter, const QPointF &dest, const Q
+         srcImage = srcImage.convertToFormat(srcImage.hasAlphaChannel() ? QImage::Format_ARGB32_Premultiplied : QImage::Format_RGB32);
+         destImage = QImage(rect.size(), srcImage.format());
+     }
++    destImage.setDevicePixelRatio(src.devicePixelRatioF());
+ 
+     // do colorizing
+     QPainter destPainter(&destImage);
+-- 
+2.7.4
+

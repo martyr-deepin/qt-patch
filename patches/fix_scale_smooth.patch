@@ -1,0 +1,41 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ qtbase-opensource-src (5.6.1+dfsg-4deepin) unstable; urgency=medium
+ .
+   * change libssl1.0-dev build depends
+   * add 0001-High-dpi-drawTiledPixmap-raster-paint-engine.patch
+   * add 0002-StyleSheetStyle-Load-Nx-images.patch
+Author: Deepin Packages Builder <packages@deepin.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: https://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: 2017-09-11
+
+--- qtbase-opensource-src-5.6.1+dfsg.orig/src/gui/painting/qpaintengine_raster.cpp
++++ qtbase-opensource-src-5.6.1+dfsg/src/gui/painting/qpaintengine_raster.cpp
+@@ -2452,8 +2452,9 @@ void QRasterPaintEngine::drawTiledPixmap
+         QTransform copy = s->matrix;
+         copy.translate(r.x(), r.y());
+         copy.translate(-sr.x(), -sr.y());
+-        const qreal inverseDpr = qreal(1.0) / pixmapDevicePixelRatio;
+-        copy.scale(inverseDpr, inverseDpr);
++        //const qreal inverseDpr = qreal(1.0) / pixmapDevicePixelRatio;
++        //copy.scale(inverseDpr, inverseDpr);
++        image = image.scaled(image.width() * pixmapDevicePixelRatio, image.height() * pixmapDevicePixelRatio, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+         d->image_filler_xform.clip = d->clip();
+         d->image_filler_xform.initTexture(&image, s->intOpacity, QTextureData::Tiled);
+         if (!d->image_filler_xform.blend)

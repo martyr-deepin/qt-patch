@@ -1,0 +1,36 @@
+From 03bca41ff5f23e6f2d0554b97002f226a38fb679 Mon Sep 17 00:00:00 2001
+From: Hualet Wang <mr.asianwang@gmail.com>
+Date: Mon, 11 Sep 2017 17:32:50 +0800
+Subject: [PATCH 3/3] StyleSheetStyle: fix distorted hiDPI pngs
+
+---
+ src/widgets/styles/qstylesheetstyle.cpp | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/src/widgets/styles/qstylesheetstyle.cpp b/src/widgets/styles/qstylesheetstyle.cpp
+index 25fd40007a..f41082c483 100644
+--- a/src/widgets/styles/qstylesheetstyle.cpp
++++ b/src/widgets/styles/qstylesheetstyle.cpp
+@@ -5943,9 +5943,17 @@ bool QStyleSheetStyle::isNaturalChild(const QObject *obj)
+ QPixmap QStyleSheetStyle::loadPixmap(const QString &fileName)
+ {
+     qreal sourceDevicePixelRatio = 1.0;
+-    QString resolvedFileName = qt_findAtNxFile(fileName, qApp->devicePixelRatio(), &sourceDevicePixelRatio);
++    qreal devicePixelRatio = qApp->devicePixelRatio();
++    QString resolvedFileName = qt_findAtNxFile(fileName, devicePixelRatio, &sourceDevicePixelRatio);
+     QPixmap pixmap(resolvedFileName);
+-    pixmap.setDevicePixelRatio(sourceDevicePixelRatio);
++    if (sourceDevicePixelRatio > 1.0) {
++        pixmap = pixmap.scaled(devicePixelRatio / sourceDevicePixelRatio * pixmap.width(), 
++                               devicePixelRatio / sourceDevicePixelRatio * pixmap.height(), 
++                               Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
++        pixmap.setDevicePixelRatio(devicePixelRatio);
++    } else {
++        pixmap.setDevicePixelRatio(sourceDevicePixelRatio);
++    }
+     return pixmap;
+ }
+ 
+-- 
+2.11.0
+

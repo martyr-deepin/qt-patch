@@ -1,0 +1,37 @@
+From 8b62673d9f0cf8aea126b3cd2f52686f013d7fe1 Mon Sep 17 00:00:00 2001
+From: Friedemann Kleint <Friedemann.Kleint@qt.io>
+Date: Tue, 18 Apr 2017 15:02:08 +0200
+Subject: [PATCH] QGraphicsDropShadowEffect: Fix for high DPI scaling
+
+Preserve the device pixel ratio.
+
+Task-number: QTBUG-60026
+Change-Id: Ie818c582fe2c7b11ceb347b39cfbf7ea49361021
+Reviewed-by: Shawn Rutledge <shawn.rutledge@qt.io>
+---
+ src/widgets/effects/qpixmapfilter.cpp | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/widgets/effects/qpixmapfilter.cpp b/src/widgets/effects/qpixmapfilter.cpp
+index 2a069d7..bb949fc 100644
+--- a/src/widgets/effects/qpixmapfilter.cpp
++++ b/src/widgets/effects/qpixmapfilter.cpp
+@@ -1316,6 +1316,7 @@ void QPixmapDropShadowFilter::draw(QPainter *p,
+         return;
+ 
+     QImage tmp(px.size(), QImage::Format_ARGB32_Premultiplied);
++    tmp.setDevicePixelRatio(px.devicePixelRatioF());
+     tmp.fill(0);
+     QPainter tmpPainter(&tmp);
+     tmpPainter.setCompositionMode(QPainter::CompositionMode_Source);
+@@ -1324,6 +1325,7 @@ void QPixmapDropShadowFilter::draw(QPainter *p,
+ 
+     // blur the alpha channel
+     QImage blurred(tmp.size(), QImage::Format_ARGB32_Premultiplied);
++    blurred.setDevicePixelRatio(px.devicePixelRatioF());
+     blurred.fill(0);
+     QPainter blurPainter(&blurred);
+     qt_blurImage(&blurPainter, tmp, d->radius, false, true);
+-- 
+2.7.4
+

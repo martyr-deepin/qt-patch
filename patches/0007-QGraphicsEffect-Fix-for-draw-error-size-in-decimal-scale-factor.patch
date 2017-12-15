@@ -1,0 +1,30 @@
+From cfef1ca845a4a107952a8acd167ac9c7b4e1f011 Mon Sep 17 00:00:00 2001
+From: Iceyer Lee <iceyer@gmail.com>
+Date: Mon, 18 Sep 2017 11:46:51 +0800
+Subject: [PATCH] Fix QGraphicsEffect draw error size in decimal scale factor
+
+When QT_SCALE_FACTOR=1.5 or other decimal, QWidget
+draw QGraphicsEffect in error size. Use QPaintDevice::devicePixelRatioF
+instead QPaintDevice::devicePixelRatio() will fix it.
+
+Change-Id: I423e224d73b948ecdeca0e6b24c51f12a724a0ba
+---
+ src/widgets/kernel/qwidget.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/widgets/kernel/qwidget.cpp b/src/widgets/kernel/qwidget.cpp
+index 7a83e0b..36340bc 100644
+--- a/src/widgets/kernel/qwidget.cpp
++++ b/src/widgets/kernel/qwidget.cpp
+@@ -5908,7 +5908,7 @@ QPixmap QWidgetEffectSourcePrivate::pixmap(Qt::CoordinateSystem system, QPoint *
+ 
+     pixmapOffset -= effectRect.topLeft();
+ 
+-    const qreal dpr = context->painter->device()->devicePixelRatio();
++    const qreal dpr = context->painter->device()->devicePixelRatioF();
+     QPixmap pixmap(effectRect.size() * dpr);
+     pixmap.setDevicePixelRatio(dpr);
+ 
+-- 
+2.7.4
+

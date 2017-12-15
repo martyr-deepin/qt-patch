@@ -1,0 +1,57 @@
+From d818d3a6d3febe4f7d597cf15ffd6075c12b568f Mon Sep 17 00:00:00 2001
+From: Iceyer <me@iceyer.net>
+Date: Fri, 29 Sep 2017 11:00:19 +0800
+Subject: [PATCH] load qss svg by scale
+
+---
+ src/widgets/styles/qstylesheetstyle.cpp | 26 ++++++++++++++++----------
+ 1 file changed, 16 insertions(+), 10 deletions(-)
+
+diff --git a/src/widgets/styles/qstylesheetstyle.cpp b/src/widgets/styles/qstylesheetstyle.cpp
+index 37ead82..1109b17 100644
+--- a/src/widgets/styles/qstylesheetstyle.cpp
++++ b/src/widgets/styles/qstylesheetstyle.cpp
+@@ -39,6 +39,7 @@
+ #include "private/qcssutil_p.h"
+ #include <qdebug.h>
+ #include <qapplication.h>
++#include <qimagereader.h>
+ #include <qmenu.h>
+ #include <qmenubar.h>
+ #include <qpainter.h>
+@@ -5934,17 +5935,22 @@ QPixmap QStyleSheetStyle::loadPixmap(const QString &fileName)
+ {
+     qreal sourceDevicePixelRatio = 1.0;
+     qreal devicePixelRatio = qApp->devicePixelRatio();
+-    QString resolvedFileName = qt_findAtNxFile(fileName, devicePixelRatio, &sourceDevicePixelRatio);
+-    QPixmap pixmap(resolvedFileName);
+-    if (sourceDevicePixelRatio > 1.0) {
+-        pixmap = pixmap.scaled(devicePixelRatio / sourceDevicePixelRatio * pixmap.width(), 
+-                               devicePixelRatio / sourceDevicePixelRatio * pixmap.height(), 
+-                               Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+-        pixmap.setDevicePixelRatio(devicePixelRatio);
+-    } else {
+-        pixmap.setDevicePixelRatio(sourceDevicePixelRatio);
++    QPixmap pixmap;
++    if (!qFuzzyCompare(sourceDevicePixelRatio, devicePixelRatio)) {
++        QImageReader reader;
++        QString resolvedFileName = qt_findAtNxFile(fileName, devicePixelRatio, &sourceDevicePixelRatio);
++        reader.setFileName(resolvedFileName);
++        // resolvedFileName must not be empty, or canRead() will print warning message.
++        if (!resolvedFileName.isEmpty() && reader.canRead()) {
++            reader.setScaledSize(reader.size() * (devicePixelRatio / sourceDevicePixelRatio));
++            pixmap = QPixmap::fromImage(reader.read());
++            pixmap.setDevicePixelRatio(devicePixelRatio);
++            return pixmap;
++        }
+     }
+-    return pixmap;
++    // otherwise return origin file
++    pixmap.load(fileName);
++    return  pixmap;
+ }
+ 
+ QT_END_NAMESPACE
+-- 
+2.11.0
+

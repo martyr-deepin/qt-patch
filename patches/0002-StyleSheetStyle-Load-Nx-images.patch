@@ -1,0 +1,111 @@
+From f61f3910890aff6b9451cd193295a71f6c390ecc Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Morten=20Johan=20S=C3=B8rvig?= <morten.sorvig@digia.com>
+Date: Thu, 13 Mar 2014 09:10:47 +0100
+Subject: [PATCH 2/2] StyleSheetStyle: Load @Nx images.
+
+Perform a @Nx image file lookup when loading pixmaps.
+
+Make drawBackgroundImage() handle high-dpi pixmaps,
+here the layout calculations needs to be in device-
+independent pixels
+
+Task-number: QTBUG-36825
+Change-Id: I61e6f53c59f61f3bd88c34a036349e51e8c8ad92
+---
+ src/widgets/styles/qstylesheetstyle.cpp | 28 ++++++++++++++++++++--------
+ src/widgets/styles/qstylesheetstyle_p.h |  1 +
+ 2 files changed, 21 insertions(+), 8 deletions(-)
+
+diff --git a/src/widgets/styles/qstylesheetstyle.cpp b/src/widgets/styles/qstylesheetstyle.cpp
+index af8144303f..25fd40007a 100644
+--- a/src/widgets/styles/qstylesheetstyle.cpp
++++ b/src/widgets/styles/qstylesheetstyle.cpp
+@@ -910,7 +910,7 @@ QRenderRule::QRenderRule(const QVector<Declaration> &declarations, const QObject
+     origin = Origin_Padding;
+     Origin clip = Origin_Border;
+     if (v.extractBackground(&brush, &uri, &repeat, &alignment, &origin, &attachment, &clip))
+-        bg = new QStyleSheetBackgroundData(brush, QPixmap(uri), repeat, alignment, origin, attachment, clip);
++        bg = new QStyleSheetBackgroundData(brush, QStyleSheetStyle::loadPixmap(uri), repeat, alignment, origin, attachment, clip);
+ 
+     QBrush sfg, fg;
+     QBrush sbg, abg;
+@@ -949,7 +949,7 @@ QRenderRule::QRenderRule(const QVector<Declaration> &declarations, const QObject
+                     bd->bi = new QStyleSheetBorderImageData;
+ 
+                 QStyleSheetBorderImageData *bi = bd->bi;
+-                bi->pixmap = QPixmap(uri);
++                bi->pixmap = QStyleSheetStyle::loadPixmap(uri);
+                 for (int i = 0; i < 4; i++)
+                     bi->cuts[i] = cuts[i];
+                 bi->horizStretch = horizStretch;
+@@ -1172,30 +1172,33 @@ void QRenderRule::drawBackgroundImage(QPainter *p, const QRect &rect, QPoint off
+     if (background()->attachment == Attachment_Fixed)
+         off = QPoint(0, 0);
+ 
++    QSize bgpSize = bgp.size() / bgp.devicePixelRatio();
++    int bgpHeight = bgpSize.height();
++    int bgpWidth = bgpSize.width();
+     QRect r = originRect(rect, background()->origin);
+-    QRect aligned = QStyle::alignedRect(Qt::LeftToRight, background()->position, bgp.size(), r);
++    QRect aligned = QStyle::alignedRect(Qt::LeftToRight, background()->position, bgpSize, r);
+     QRect inter = aligned.translated(-off).intersected(r);
+ 
+     switch (background()->repeat) {
+     case Repeat_Y:
+         p->drawTiledPixmap(inter.x(), r.y(), inter.width(), r.height(), bgp,
+                            inter.x() - aligned.x() + off.x(),
+-                           bgp.height() - int(aligned.y() - r.y()) % bgp.height() + off.y());
++                           bgpHeight - int(aligned.y() - r.y()) % bgpHeight + off.y());
+         break;
+     case Repeat_X:
+         p->drawTiledPixmap(r.x(), inter.y(), r.width(), inter.height(), bgp,
+-                           bgp.width() - int(aligned.x() - r.x())%bgp.width() + off.x(),
++                           bgpWidth - int(aligned.x() - r.x())%bgpWidth + off.x(),
+                            inter.y() - aligned.y() + off.y());
+         break;
+     case Repeat_XY:
+         p->drawTiledPixmap(r, bgp,
+-                           QPoint(bgp.width() - int(aligned.x() - r.x())% bgp.width() + off.x(),
+-                                  bgp.height() - int(aligned.y() - r.y())%bgp.height() + off.y()));
++                            QPoint(bgpWidth - int(aligned.x() - r.x())% bgpWidth + off.x(),
++                                   bgpHeight - int(aligned.y() - r.y())%bgpHeight + off.y()));
+         break;
+     case Repeat_None:
+     default:
+         p->drawPixmap(inter.x(), inter.y(), bgp, inter.x() - aligned.x() + off.x(),
+-                      inter.y() - aligned.y() + off.y(), inter.width(), inter.height());
++                      inter.y() - aligned.y() + off.y(), bgp.width() , bgp.height());
+         break;
+     }
+ 
+@@ -5937,6 +5940,15 @@ bool QStyleSheetStyle::isNaturalChild(const QObject *obj)
+     return false;
+ }
+ 
++QPixmap QStyleSheetStyle::loadPixmap(const QString &fileName)
++{
++    qreal sourceDevicePixelRatio = 1.0;
++    QString resolvedFileName = qt_findAtNxFile(fileName, qApp->devicePixelRatio(), &sourceDevicePixelRatio);
++    QPixmap pixmap(resolvedFileName);
++    pixmap.setDevicePixelRatio(sourceDevicePixelRatio);
++    return pixmap;
++}
++
+ QT_END_NAMESPACE
+ 
+ #include "moc_qstylesheetstyle_p.cpp"
+diff --git a/src/widgets/styles/qstylesheetstyle_p.h b/src/widgets/styles/qstylesheetstyle_p.h
+index 9cd8cb889d..0c92d187ff 100644
+--- a/src/widgets/styles/qstylesheetstyle_p.h
++++ b/src/widgets/styles/qstylesheetstyle_p.h
+@@ -158,6 +158,7 @@ private:
+ 
+     static Qt::Alignment resolveAlignment(Qt::LayoutDirection, Qt::Alignment);
+     static bool isNaturalChild(const QObject *obj);
++    static QPixmap loadPixmap(const QString &fileName);
+     bool initObject(const QObject *obj) const;
+ public:
+     static int numinstances;
+-- 
+2.11.0
+

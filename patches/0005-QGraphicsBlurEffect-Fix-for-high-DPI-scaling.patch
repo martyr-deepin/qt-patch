@@ -1,0 +1,90 @@
+From 9595622e366fcbef6bcc3a2ee08597959e3e2bd2 Mon Sep 17 00:00:00 2001
+From: Friedemann Kleint <Friedemann.Kleint@qt.io>
+Date: Tue, 18 Apr 2017 14:47:46 +0200
+Subject: [PATCH] QGraphicsBlurEffect:  Fix for high DPI scaling
+
+Preserve the device pixel ratio in the various helper functions
+and when drawing.
+
+Task-number: QTBUG-60026
+Change-Id: Ieac9360b00044b6aedd0d3e1ad6e3b16d436f20f
+Reviewed-by: Allan Sandfeld Jensen <allan.jensen@qt.io>
+---
+ src/widgets/effects/qpixmapfilter.cpp                          | 6 +++++-
+ tests/auto/widgets/effects/qpixmapfilter/tst_qpixmapfilter.cpp | 5 +++++
+ 2 files changed, 10 insertions(+), 1 deletion(-)
+
+diff --git a/src/widgets/effects/qpixmapfilter.cpp b/src/widgets/effects/qpixmapfilter.cpp
+index bb949fc..999e551 100644
+--- a/src/widgets/effects/qpixmapfilter.cpp
++++ b/src/widgets/effects/qpixmapfilter.cpp
+@@ -719,6 +719,7 @@ void expblur(QImage &img, qreal radius, bool improvedQuality = false, int transp
+     }
+ 
+     QImage temp(img.height(), img.width(), img.format());
++    temp.setDevicePixelRatio(img.devicePixelRatioF());
+     if (transposed >= 0) {
+         if (img.depth() == 8) {
+             qt_memrotate270(reinterpret_cast<const quint8*>(img.bits()),
+@@ -780,6 +781,7 @@ Q_WIDGETS_EXPORT QImage qt_halfScaled(const QImage &source)
+     if (source.format() == QImage::Format_Indexed8 || source.format() == QImage::Format_Grayscale8) {
+         // assumes grayscale
+         QImage dest(source.width() / 2, source.height() / 2, srcImage.format());
++        dest.setDevicePixelRatio(source.devicePixelRatioF());
+ 
+         const uchar *src = reinterpret_cast<const uchar*>(const_cast<const QImage &>(srcImage).bits());
+         int sx = srcImage.bytesPerLine();
+@@ -801,6 +803,7 @@ Q_WIDGETS_EXPORT QImage qt_halfScaled(const QImage &source)
+         return dest;
+     } else if (source.format() == QImage::Format_ARGB8565_Premultiplied) {
+         QImage dest(source.width() / 2, source.height() / 2, srcImage.format());
++        dest.setDevicePixelRatio(source.devicePixelRatioF());
+ 
+         const uchar *src = reinterpret_cast<const uchar*>(const_cast<const QImage &>(srcImage).bits());
+         int sx = srcImage.bytesPerLine();
+@@ -837,6 +840,7 @@ Q_WIDGETS_EXPORT QImage qt_halfScaled(const QImage &source)
+     }
+ 
+     QImage dest(source.width() / 2, source.height() / 2, srcImage.format());
++    dest.setDevicePixelRatio(source.devicePixelRatioF());
+ 
+     const quint32 *src = reinterpret_cast<const quint32*>(const_cast<const QImage &>(srcImage).bits());
+     int sx = srcImage.bytesPerLine() >> 2;
+@@ -881,7 +885,7 @@ Q_WIDGETS_EXPORT void qt_blurImage(QPainter *p, QImage &blurImage, qreal radius,
+     if (p) {
+         p->scale(scale, scale);
+         p->setRenderHint(QPainter::SmoothPixmapTransform);
+-        p->drawImage(QRect(0, 0, blurImage.width(), blurImage.height()), blurImage);
++        p->drawImage(QRect(QPoint(0, 0), blurImage.size() / blurImage.devicePixelRatioF()), blurImage);
+     }
+ }
+ 
+diff --git a/tests/auto/widgets/effects/qpixmapfilter/tst_qpixmapfilter.cpp b/tests/auto/widgets/effects/qpixmapfilter/tst_qpixmapfilter.cpp
+index 08f4944..7d7c1e7 100644
+--- a/tests/auto/widgets/effects/qpixmapfilter/tst_qpixmapfilter.cpp
++++ b/tests/auto/widgets/effects/qpixmapfilter/tst_qpixmapfilter.cpp
+@@ -390,6 +390,7 @@ QT_END_NAMESPACE
+ void tst_QPixmapFilter::blurIndexed8()
+ {
+     QImage img(16, 32, QImage::Format_Indexed8);
++    img.setDevicePixelRatio(2);
+     img.setColorCount(256);
+     for (int i = 0; i < 256; ++i)
+         img.setColor(i, qRgb(i, i, i));
+@@ -399,9 +400,13 @@ void tst_QPixmapFilter::blurIndexed8()
+     QImage original = img;
+     qt_blurImage(img, 10, true, false);
+     QCOMPARE(original.size(), img.size());
++    QVERIFY2(qFuzzyCompare(img.devicePixelRatioF(), qreal(2)),
++             QByteArray::number(img.devicePixelRatioF()).constData());
+ 
+     original = img;
+     qt_blurImage(img, 10, true, true);
++    QVERIFY2(qFuzzyCompare(img.devicePixelRatioF(), qreal(2)),
++             QByteArray::number(img.devicePixelRatioF()).constData());
+     QCOMPARE(original.size(), QSize(img.height(), img.width()));
+ }
+ 
+-- 
+2.7.4
+

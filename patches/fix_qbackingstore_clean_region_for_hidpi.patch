@@ -1,0 +1,76 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ qtbase-opensource-src (5.6.1+dfsg-11deepin) unstable; urgency=medium
+ .
+   * add 0010-fix_qrasterpaintengine_rect_for_hidpi.patch
+   * add 0011-fix_qwidget_paint_area_for_hidpi.patch
+Author: Deepin Packages Builder <packages@deepin.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: https://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: 2017-12-01
+
+--- qtbase-opensource-src-5.6.1+dfsg.orig/src/gui/painting/qbackingstore.cpp
++++ qtbase-opensource-src-5.6.1+dfsg/src/gui/painting/qbackingstore.cpp
+@@ -158,13 +158,46 @@ QWindow* QBackingStore::window() const
+     \sa endPaint(), paintDevice()
+ */
+ 
++inline QRect operator *(const QRect &rect, qreal scale)
++{
++    return QRect(qRound(rect.x() * scale), qRound(rect.y() * scale),
++                 qFloor(rect.width() * scale), qFloor(rect.height() * scale));
++}
++
++inline QRegion operator *(const QRegion &region, qreal scale)
++{
++    if (qFuzzyCompare(scale, 1.0))
++        return region;
++
++    const QRect &bound_rect = region.boundingRect();
++    const QRect &new_bound = (bound_rect * scale);
++
++    QRegion new_region;
++
++    for (const QRect &r : region.rects()) {
++        QRect new_rect = (r * scale);
++
++        if (r.right() == bound_rect.right()) {
++            new_rect.setRight(new_bound.right());
++        }
++
++        if (r.bottom() == bound_rect.bottom()) {
++            new_rect.setBottom(new_bound.bottom());
++        }
++
++        new_region += new_rect;
++    }
++
++    return new_region;
++}
++
+ void QBackingStore::beginPaint(const QRegion &region)
+ {
+     if (d_ptr->highDpiBackingstore &&
+         d_ptr->highDpiBackingstore->devicePixelRatio() != d_ptr->window->devicePixelRatio())
+         resize(size());
+ 
+-    d_ptr->platformBackingStore->beginPaint(QHighDpi::toNativeLocalRegion(region, d_ptr->window));
++    d_ptr->platformBackingStore->beginPaint(region * QHighDpiScaling::factor(d_ptr->window));
+ 
+     // When QtGui is applying a high-dpi scale factor the backing store
+     // creates a "large" backing store image. This image needs to be
