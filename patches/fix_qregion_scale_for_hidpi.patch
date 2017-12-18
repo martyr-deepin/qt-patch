@@ -5,11 +5,10 @@ Description: <short summary of the patch>
  information below has been extracted from the changelog. Adjust it or drop
  it.
  .
- qtbase-opensource-src (5.6.1+dfsg-11deepin) unstable; urgency=medium
+ qtbase-opensource-src (5.6.1+dfsg-13deepin) unstable; urgency=medium
  .
-   * add 0010-fix_qrasterpaintengine_rect_for_hidpi.patch
-   * add 0011-fix_qwidget_paint_area_for_hidpi.patch
-Author: Deepin Packages Builder <packages@deepin.com>
+   * remove 0010 patch
+Author: Deepin Packages Builder <zs@zs-PC>
 
 ---
 The information above should follow the Patch Tagging Guidelines, please
@@ -22,108 +21,20 @@ Bug-Debian: https://bugs.debian.org/<bugnumber>
 Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
 Forwarded: <no|not-needed|url proving that it has been forwarded>
 Reviewed-By: <name and email of someone who approved the patch>
-Last-Update: 2017-12-01
+Last-Update: 2017-12-18
 
 --- qtbase-opensource-src-5.6.1+dfsg.orig/src/gui/kernel/qhighdpiscaling_p.h
 +++ qtbase-opensource-src-5.6.1+dfsg/src/gui/kernel/qhighdpiscaling_p.h
-@@ -401,12 +401,46 @@ inline QRegion fromNativeLocalExposedReg
-     return pointRegion;
- }
- 
-+inline QRectF operator *(const QRect &rect, qreal scale)
-+{
-+    return QRectF(QPointF(rect.x() * scale, rect.y() * scale),
-+                  QSizeF(rect.width() * scale, rect.height() * scale));
-+}
-+
-+inline QRegion operator *(const QRegion &region, qreal scale)
-+{
-+    if (qFuzzyCompare(scale, 1.0))
-+        return region;
-+
-+    const QRect &bound_rect = region.boundingRect();
-+    const QRect &new_bound = (bound_rect * scale).toRect();
-+
-+    QRegion new_region;
-+
-+    for (const QRect &r : region.rects()) {
-+        QRect new_rect = (r * scale).toRect();
-+
-+        if (r.right() == bound_rect.right()) {
-+            new_rect.setRight(new_bound.right());
-+        }
-+
-+        if (r.bottom() == bound_rect.bottom()) {
-+            new_rect.setBottom(new_bound.bottom());
-+        }
-+        
-+        new_region += new_rect;
-+    }
-+
-+    return new_region;
-+}
-+
- inline QRegion toNativeLocalRegion(const QRegion &pointRegion, const QWindow *window)
- {
-     if (!QHighDpiScaling::isActive())
+@@ -407,6 +407,12 @@ inline QRegion toNativeLocalRegion(const
          return pointRegion;
  
      qreal scaleFactor = QHighDpiScaling::factor(window);
-+    return pointRegion * scaleFactor;
++    
++    QTransform scaleTransform;
++    scaleTransform.scale(scaleFactor, scaleFactor);
++
++    return scaleTransform.map(pointRegion);
++
      QRegion pixelRegon;
      foreach (const QRect &rect, pointRegion.rects()) {
          pixelRegon += QRect(toNative(rect.topLeft(), scaleFactor),
---- qtbase-opensource-src-5.6.1+dfsg.orig/src/widgets/kernel/qwidget.cpp
-+++ qtbase-opensource-src-5.6.1+dfsg/src/widgets/kernel/qwidget.cpp
-@@ -2073,14 +2073,48 @@ QRegion QWidgetPrivate::clipRegion() con
-     return r;
- }
- 
-+inline QRectF operator *(const QRect &rect, qreal scale)
-+{
-+    return QRectF(QPointF(rect.x() * scale, rect.y() * scale),
-+                  QSizeF(rect.width() * scale, rect.height() * scale));
-+}
-+
-+inline QRegion operator *(const QRegion &region, qreal scale)
-+{
-+    if (qFuzzyCompare(scale, 1.0))
-+        return region;
-+
-+    const QRect &bound_rect = region.boundingRect();
-+    const QRect &new_bound = (bound_rect * scale).toRect();
-+
-+    QRegion new_region;
-+
-+    for (const QRect &r : region.rects()) {
-+        QRect new_rect = (r * scale).toRect();
-+
-+        if (r.right() == bound_rect.right()) {
-+            new_rect.setRight(new_bound.right());
-+        }
-+
-+        if (r.bottom() == bound_rect.bottom()) {
-+            new_rect.setBottom(new_bound.bottom());
-+        }
-+
-+        new_region += new_rect;
-+    }
-+
-+    return new_region;
-+}
-+
- void QWidgetPrivate::setSystemClip(QPaintDevice *paintDevice, const QRegion &region)
- {
- // Transform the system clip region from device-independent pixels to device pixels
-     QPaintEngine *paintEngine = paintDevice->paintEngine();
--    QTransform scaleTransform;
-+//    QTransform scaleTransform;
-     const qreal devicePixelRatio = paintDevice->devicePixelRatioF();
--    scaleTransform.scale(devicePixelRatio, devicePixelRatio);
--    paintEngine->d_func()->systemClip = scaleTransform.map(region);
-+//    scaleTransform.scale(devicePixelRatio, devicePixelRatio);
-+//    paintEngine->d_func()->systemClip = scaleTransform.map(region);
-+    paintEngine->d_func()->systemClip = region * devicePixelRatio;
- }
- 
- #ifndef QT_NO_GRAPHICSEFFECT
