@@ -18,3 +18,4 @@ gnukfreebsd_cloexec.diff
 0009-fix_qss_border_cap_style.patch
 fix_qrasterpaintengine_rect_for_hidpi.patch
 fix_qregion_scale_for_hidpi.patch
+fix_qstylesheetstyle_clip_border_error.patch
