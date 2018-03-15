@@ -19,3 +19,4 @@ gnukfreebsd_cloexec.diff
 fix_qrasterpaintengine_rect_for_hidpi.patch
 fix_qregion_scale_for_hidpi.patch
 fix_qstylesheetstyle_clip_border_error.patch
+Fix-hidpi-dnd-mask.patch
