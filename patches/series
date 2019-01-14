@@ -21,3 +21,4 @@ fix_qregion_scale_for_hidpi.patch
 fix_qstylesheetstyle_clip_border_error.patch
 Fix-hidpi-dnd-mask.patch
 Fix-division-by-zero.patch
+fix_clipboard_big_image_data.patch

@@ -1,0 +1,95 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ qtbase-opensource-src (5.10.1+dfsg-12deepin) unstable; urgency=medium
+ .
+   * add Fix_calculating_window_mask_form_pixmap_on_drag_and_drop.patch
+Author: Debian Qt/KDE Maintainers <zs@deepin.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: https://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: 2019-01-14
+
+--- qtbase-opensource-src-5.10.1+dfsg.orig/src/gui/kernel/qdnd.cpp
++++ qtbase-opensource-src-5.10.1+dfsg/src/gui/kernel/qdnd.cpp
+@@ -320,12 +320,18 @@ QByteArray QInternalMimeData::renderData
+                 QBuffer buf(&ba);
+                 buf.open(QBuffer::WriteOnly);
+                 // would there not be PNG ??
+-                image.save(&buf, "PNG");
++                image.save(&buf, "PNG", 80);
+             } else if (mimeType.startsWith(QLatin1String("image/")) && data->hasImage()) {
+                 QImage image = qvariant_cast<QImage>(data->imageData());
+                 QBuffer buf(&ba);
+                 buf.open(QBuffer::WriteOnly);
+-                image.save(&buf, mimeType.mid(mimeType.indexOf(QLatin1Char('/')) + 1).toLatin1().toUpper());
++                const QByteArray &format = mimeType.mid(mimeType.indexOf(QLatin1Char('/')) + 1).toLatin1().toUpper();
++                
++                if (format == "PNG") {
++                    image.save(&buf, format, 80);
++                } else {
++                    image.save(&buf, format);
++                }
+             }
+         }
+     }
+--- qtbase-opensource-src-5.10.1+dfsg.orig/src/plugins/platforms/xcb/qxcbclipboard.cpp
++++ qtbase-opensource-src-5.10.1+dfsg/src/plugins/platforms/xcb/qxcbclipboard.cpp
+@@ -521,6 +521,12 @@ xcb_atom_t QXcbClipboard::sendTargetsSel
+     return property;
+ }
+ 
++static inline int maxSelectionIncr(xcb_connection_t *c)
++{
++    int l = xcb_get_maximum_request_length(c);
++    return (l > 65536 ? 65536*4 : l*4) - 100;
++}
++
+ xcb_atom_t QXcbClipboard::sendSelection(QMimeData *d, xcb_atom_t target, xcb_window_t window, xcb_atom_t property)
+ {
+     xcb_atom_t atomFormat = target;
+@@ -544,7 +550,7 @@ xcb_atom_t QXcbClipboard::sendSelection(
+         if (m_clipboard_closing)
+             allow_incr = false;
+         // X_ChangeProperty protocol request is 24 bytes
+-        const int increment = (xcb_get_maximum_request_length(xcb_connection()) * 4) - 24;
++        const int increment = maxSelectionIncr(connection()->xcb_connection());
+         if (data.size() > increment && allow_incr) {
+             long bytes = data.size();
+             xcb_change_property(xcb_connection(), XCB_PROP_MODE_REPLACE, window, property,
+@@ -555,7 +561,7 @@ xcb_atom_t QXcbClipboard::sendSelection(
+         }
+ 
+         // make sure we can perform the XChangeProperty in a single request
+-        if (data.size() > increment)
++        if (!m_clipboard_closing && data.size() > increment)
+             return XCB_NONE; // ### perhaps use several XChangeProperty calls w/ PropModeAppend?
+         int dataSize = data.size() / (dataFormat / 8);
+         // use a single request to transfer data
+@@ -737,13 +743,6 @@ void QXcbClipboard::handleXFixesSelectio
+         emitChanged(mode);
+ }
+ 
+-
+-static inline int maxSelectionIncr(xcb_connection_t *c)
+-{
+-    int l = xcb_get_maximum_request_length(c);
+-    return (l > 65536 ? 65536*4 : l*4) - 100;
+-}
+-
+ bool QXcbClipboard::clipboardReadProperty(xcb_window_t win, xcb_atom_t property, bool deleteProperty, QByteArray *buffer, int *size, xcb_atom_t *type, int *format)
+ {
+     int    maxsize = maxSelectionIncr(xcb_connection());
