@@ -1,0 +1,87 @@
+Description: 修复了根窗口的事件找不到对应的事件处理对象
+ 当使用多个屏幕时，断开其中一个屏幕链接后，会销毁它对应
+ 的QDesktopScreenWidget对象，这会导致QXcbConnection中移
+ 除root window对应的QXcbWindowEventListener对象，当收到
+ root window的x事件后，会找不到事件处理者，引起kwin窗口
+ 管理器的工作区视图的快捷键失效。可参考Qt的两个提交：
+ 2b34aefcf02f09253473b096eb4faffd3e62b5f4 和
+ d7a9e08f0ada36ad8ad44651f27a76c9c74e3428，以及 KWin的一
+ 个提交：a6dee74ee455d1da47dd5c9d55a84adbb5e1426a.
+ .
+ qtbase-opensource-src (5.7.1+dfsg-9deepin) stable; urgency=medium
+ .
+   * remove fix_scale_smooth.patch
+Author: Packages <zs@deepin.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: https://bugs.kde.org/show_bug.cgi?id=388647
+Bug-Deepin: https://github.com/linuxdeepin/internal-discussion/issues/1380
+Bug-Debian: https://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: zccrs <zccrs@live.com>
+Last-Update: 2019-04-29
+
+--- qtbase-opensource-src-5.7.1+dfsg.orig/src/gui/kernel/qwindow.cpp
++++ qtbase-opensource-src-5.7.1+dfsg/src/gui/kernel/qwindow.cpp
+@@ -507,7 +507,8 @@ void QWindow::setVisible(bool visible)
+         // can defer creation until the parent is created or we're re-parented.
+         if (parent() && !parent()->handle())
+             return;
+-        else
++        
++	if (visible)
+             create();
+     }
+ 
+@@ -549,7 +550,8 @@ void QWindow::setVisible(bool visible)
+         d->applyCursor();
+ #endif
+ 
+-    d->platformWindow->setVisible(visible);
++    if (d->platformWindow)
++        d->platformWindow->setVisible(visible);
+ 
+     if (!visible) {
+         QHideEvent hideEvent;
+--- qtbase-opensource-src-5.7.1+dfsg.orig/src/widgets/kernel/qwidget.cpp
++++ qtbase-opensource-src-5.7.1+dfsg/src/widgets/kernel/qwidget.cpp
+@@ -1477,10 +1477,12 @@ void QWidgetPrivate::create_sys(WId wind
+ 
+     qt_window_private(win)->positionPolicy = topData()->posIncludesFrame ?
+         QWindowPrivate::WindowFrameInclusive : QWindowPrivate::WindowFrameExclusive;
+-    win->create();
+-    // Enable nonclient-area events for QDockWidget and other NonClientArea-mouse event processing.
+-    if ((flags & Qt::Desktop) == Qt::Window)
++    
++    if (q->windowType() != Qt::Desktop || q->testAttribute(Qt::WA_NativeWindow)) {
++        win->create();
++        // Enable nonclient-area events for QDockWidget and other NonClientArea-mouse event processing.
+         win->handle()->setFrameStrutEventsEnabled(true);
++    }
+ 
+     data.window_flags = win->flags();
+ 
+@@ -1499,10 +1501,13 @@ void QWidgetPrivate::create_sys(WId wind
+     }
+ 
+     setWindowModified_helper();
+-    WId id = win->winId();
+-    // See the QPlatformWindow::winId() documentation
+-    Q_ASSERT(id != WId(0));
+-    setWinId(id);
++    
++    if (win->handle()) {
++        WId id = win->winId();
++        // See the QPlatformWindow::winId() documentation
++        Q_ASSERT(id != WId(0));
++        setWinId(id);
++    }
+ 
+     // Check children and create windows for them if necessary
+     q_createNativeChildrenAndSetParent(q);
